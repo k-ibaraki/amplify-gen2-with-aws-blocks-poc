@@ -261,16 +261,32 @@ createTodo→listTodos: { content: "deployed-todo-72515", pk: "todo", id: "...",
 
 → **リソース定義は Blocks のまま、Amplify(ampx) がデプロイし、実 DynamoDB に永続**。記事の核心が成立。
 
+### 手順 2-4: ローカルでの2バックエンドモード検証（フロント/バック分離）
+
+**前提**: フロントエンドとバックエンドは別レイヤー。`npx ampx sandbox` は**バックエンド専用**でフロントは出さない。
+フロントは常に Vite（ローカル）または Amplify Hosting（デプロイ）。
+
+| バックエンド | 起動 | フロント | 結果 |
+|---|---|---|---|
+| Blocks **mock** | `npm run dev`（Vite＋mock 一括） | 同梱 Vite(:3000) | ✅ 全 mock で Todo/メモ動作 |
+| Blocks **sandbox** | `npm run sandbox`（API 前面:3001→実Lambda） | 別途 `npm run dev:client`(:3000) | ✅ 実 sandbox Lambda→DynamoDB に接続して動作 |
+
+- `ampx` 実行時のハマり: 素の `npx ampx sandbox` は `Missing --conditions=cdk` で即停止（guard）。
+  → `npm run amplify:sandbox`（`NODE_OPTIONS=--conditions=cdk` を付与）でラップした。
+- `npm run sandbox` は**フロントを配信しない**（API 前面 :3001 のみ）。フロントは Vite を別途起動する。
+
 ---
 
 ## Phase 3 — 成功判定と片付け
 
 ### 成功チェックリスト
 
-- [ ] `NODE_OPTIONS="--conditions=cdk" npx ampx sandbox` が完走する（`--conditions=cdk` だけは必須）
-- [ ] synth 出力に building block の**実リソース（DynamoDB Table）**が出ている（mock 落ちしていない）
-- [ ] `blocks.apiUrl` を叩くと**実レスポンス**が返る
-- [ ] デプロイが **`ampx` 一発**で完結する
+- [x] `NODE_OPTIONS="--conditions=cdk" npx ampx sandbox` が完走する（233s）
+- [x] 実リソース（DynamoDB Table×2: store/todos）が Amplify 配下に出ている（mock 落ちなし）
+- [x] `custom.blocksApiUrl` を叩くと**実レスポンス**が返る（note/todo 往復）
+- [x] デプロイが **`ampx` 一発**で完結する（`npm run deploy:blocks`/`sandbox` 不要）
+- [x] ローカル `npm run dev`（`:3000`）が Amplify 非依存で動く（全 mock）
+- [ ] **frontend を Amplify Hosting で配信**し、ホスティング環境で両機能が動く（← 残り）
 
 ### 片付け
 
