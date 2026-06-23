@@ -67,7 +67,10 @@ npm run dev:client    # Vite だけを起動（http://localhost:3000）
 |---|---|---|
 | **mock**（AWS 不要・最速） | `npm run dev`（Vite＋mock を一括起動） | http://localhost:3000 |
 | **Blocks sandbox**（実 AWS） | ターミナル1: `npm run sandbox` ／ ターミナル2: `npm run dev:client` | http://localhost:3000 |
-| **ampx デプロイ済み**（実 AWS） | `npm run amplify:sandbox` でデプロイ後、`amplify_outputs.json` の `custom.blocksApiUrl` をフロントに渡して Vite（or Amplify Hosting） | http://localhost:3000 |
+| **ampx デプロイ済み**（実 AWS） | 先に `npm run amplify:sandbox` でデプロイ → `npm run dev:amplify`（`custom.blocksApiUrl` を config に流し込んで Vite 起動） | http://localhost:3000 |
+
+> 📌 **`npm run dev` は AWS に繋がらない**（完全ローカル mock）。実 AWS のバックエンドに繋ぎたいときは
+> `npm run sandbox`（Blocks sandbox）か `npm run dev:amplify`（ampx デプロイ済み）を使う。
 
 > 💡 **CORS でハマったら**: `npm run deploy`（本番）や別モードが `.blocks-sandbox/config.json` を
 > 別 URL で上書きしている可能性。`npm run dev`/`npm run sandbox` を起動し直すと正しい URL に戻る。
