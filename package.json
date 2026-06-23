@@ -8,19 +8,18 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "dev:server": "tsx watch aws-blocks/scripts/server.ts",
-    "dev:client": "vite",
-    "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:amplify": "tsx aws-blocks/scripts/use-amplify-backend.ts && vite",
-    "sandbox": "tsx aws-blocks/scripts/sandbox.ts",
-    "sandbox:destroy": "tsx -C cdk aws-blocks/scripts/sandbox-destroy.ts",
-    "amplify:sandbox": "NODE_OPTIONS=--conditions=cdk ampx sandbox",
-    "amplify:sandbox:once": "NODE_OPTIONS=--conditions=cdk ampx sandbox --once",
-    "amplify:sandbox:delete": "ampx sandbox delete",
+
+    "dev": "concurrently \"npm:back\" \"npm:front\"",
+    "front": "vite",
+    "back": "tsx watch aws-blocks/scripts/server.ts",
+    "front:amplify": "tsx aws-blocks/scripts/use-amplify-backend.ts && vite",
+
+    "deploy:amplify": "NODE_OPTIONS=--conditions=cdk ampx sandbox",
+    "deploy:amplify:once": "NODE_OPTIONS=--conditions=cdk ampx sandbox --once",
+    "destroy:amplify": "ampx sandbox delete",
+
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "deploy": "tsx aws-blocks/scripts/deploy.ts",
-    "destroy": "tsx aws-blocks/scripts/destroy.ts"
+    "preview": "vite preview"
   },
   "repository": {
     "type": "git",
