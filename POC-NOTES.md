@@ -275,6 +275,30 @@ createTodo→listTodos: { content: "deployed-todo-72515", pk: "todo", id: "...",
   → `npm run amplify:sandbox`（`NODE_OPTIONS=--conditions=cdk` を付与）でラップした。
 - `npm run sandbox` は**フロントを配信しない**（API 前面 :3001 のみ）。フロントは Vite を別途起動する。
 
+> 📝 上記までの手順で使っているコマンド名（`npm run sandbox` / `amplify:sandbox` / `dev:client` 等）は
+> **Phase 1〜2 探索時点のもの**。統合が固まった後に下記 手順 2-5 で整理し直した（記事では各 Phase は当時の
+> 名前で説明し、最後に「整理後の体系」を提示する構成が読みやすい）。
+
+### 手順 2-5: 統合結果を踏まえてコマンド体系を整理
+
+一元化が完成して「デプロイは ampx 一本」になったので、Phase 1 で増えていったコマンド群を
+**接頭辞＝役割**で整理し直し、不要なものを削除した。
+
+**整理の指針**: フロント/バックは別レイヤーなので名前で区別する。デプロイ経路は ampx 一本に絞る。
+
+| 旧（探索時） | 新（整理後） | 役割 |
+|---|---|---|
+| `dev:client` | **`front`** | フロント（Vite）を起動 |
+| `dev:server` | **`back`** | mock バックエンドを起動 |
+| `dev` | `dev` | front＋back を一括（ローカル mock） |
+| `dev:amplify` / `connect:amplify` | **`front:amplify`** | フロントを ampx デプロイ済み backend に繋いで起動 |
+| `amplify:sandbox` | **`deploy:amplify`** | ampx で Blocks をデプロイ（`NODE_OPTIONS=--conditions=cdk` 付与） |
+| `amplify:sandbox:delete` | **`destroy:amplify`** | 後始末 |
+| `sandbox` / `deploy`（Blocks 単体） | **削除** | 一元化の趣旨に反する重複デプロイ経路のため撤去 |
+
+あわせて Blocks 単体 CDK デプロイ用のファイル（`index.cdk.ts` / `cdk.json` / `scripts/{sandbox,deploy,destroy,…}.ts`）も削除。
+→ 最終的なコマンド体系は `README.md` を参照。
+
 ---
 
 ## Phase 3 — 成功判定と片付け
