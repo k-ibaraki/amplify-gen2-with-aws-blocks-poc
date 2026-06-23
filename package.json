@@ -43,6 +43,7 @@
     "@aws-blocks/blocks": "*",
     "aws-amplify": "^6.18.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "zod": "^3.25.76"
   }
 }

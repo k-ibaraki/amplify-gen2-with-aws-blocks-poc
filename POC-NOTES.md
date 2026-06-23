@@ -207,17 +207,59 @@ npm run dev   # Blocks dev server(:3001, mock) + Vite(:3000) を同時起動
 
 ## Phase 2 — Amplify へ一元化（AWS 認証必要）
 
-### 手順 2-1: amplify/backend.ts に BlocksBackend を埋め込む
+### 手順 2-1: バックエンドを Blocks に一本化
 
-<!-- 差分をここに記録 -->
+- `aws-blocks/index.ts`: Todo を **DistributedTable**（DynamoDB）で実装し直し、共有メモの **KVStore** と合わせて Blocks に集約。
+- `src/App.tsx`: Amplify Data クライアントを撤去し、**`import { api } from 'aws-blocks'` の1クライアント**で Todo もメモも呼ぶ。
+- `amplify/backend.ts`: 定義は全部 Blocks 側にあるので **`defineBackend({})`（空の器）** にして BlocksBackend を埋め込む:
 
-### 手順 2-2: --conditions=cdk 付きでデプロイ
+```ts
+const backend = defineBackend({});
+const blocksStack = backend.createStack('blocks');
+const blocks = await BlocksBackend.create(blocksStack, 'blocks', {
+  backendHandlerPath: join(__dirname, '../aws-blocks/index.handler.ts'),
+  backendCDKPath:     join(__dirname, '../aws-blocks/index.ts'),
+});
+RemovalPolicies.of(blocksStack).destroy();
+blocks.handler.addEnvironment('CORS_ALLOWED_ORIGINS', '.*'); // PoC: 全許可（本番は絞る）
+backend.addOutput({ custom: { blocksApiUrl: blocks.apiUrl } });
+```
 
-<!-- コマンドと出力をここに記録 -->
+**ローカル検証（AWS 不要）**: `npm run dev` → `:3000` で Todo もメモも **全て Blocks の mock で完結**
+（Phase 1 と違い Amplify 実 AppSync 依存がない＝完全ローカル）。Playwright で永続・CORSなし・エラーなしを確認。
 
-### 手順 2-3: 🔴 mock 落ち判定（このPoCの核）
+### 手順 2-2: ampx 一発でデプロイ
 
-<!-- grep 結果を verbatim で記録 -->
+```bash
+NODE_OPTIONS="--conditions=cdk" npx ampx sandbox
+```
+
+- `✔ Deployment completed in 233.371 seconds`
+- 既存 sandbox から **auth/data（Cognito/AppSync/Todo）を削除**し、**blocks ネストスタックを追加**する更新。
+- `amplify_outputs.json` に **`custom.blocksApiUrl: https://0j8dhbtbzk.execute-api.ap-northeast-1.amazonaws.com/prod/aws-blocks/api`** が出力。
+- `npm run deploy:blocks` / `npm run sandbox`（Blocks 側デプロイ）は**もう不要**。デプロイ口は ampx 一本。
+
+### 手順 2-3: 検証 — mock 落ちしていないか＆実応答（このPoCの核）
+
+**(A) デプロイ済みスタックの実リソース**: Amplify 配下の blocks ネストスタックに **DynamoDB テーブル2つ**:
+
+```
+amplify-...-sandbox-7dadc39086-blocks-blocks-poc-store    （KVStore: 共有メモ）
+amplify-...-sandbox-7dadc39086-blocks-blocks-poc-todos    （DistributedTable: Todo）
+```
+
+→ `--conditions=cdk` が **ampx の tsImport → BlocksBackend.create → index.ts のネスト import** まで伝播し、
+building block が **mock ではなく実 CDK construct に解決**された。mock 落ちしていない。
+
+**(B) API の実応答（end-to-end の本証明）**: `custom.blocksApiUrl` に実リクエスト:
+
+```
+[Blocks] Using API (env BLOCKS_API_URL): https://0j8dhbtbzk.execute-api.ap-northeast-1.amazonaws.com/prod/aws-blocks/api
+saveNote→loadNote: { text: "deployed-note-72515" }              # KVStore 実往復
+createTodo→listTodos: { content: "deployed-todo-72515", pk: "todo", id: "...", createdAt: ... }  # DistributedTable 実往復
+```
+
+→ **リソース定義は Blocks のまま、Amplify(ampx) がデプロイし、実 DynamoDB に永続**。記事の核心が成立。
 
 ---
 

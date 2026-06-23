@@ -1,52 +1,41 @@
 import { useEffect, useState } from 'react';
-import { Amplify } from 'aws-amplify';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../amplify/data/resource';
-import outputs from '../amplify_outputs.json';
-// Blocks 側クライアント。ローカル(npm run dev)では Blocks dev server に、
-// デプロイ時はホスティング配下の /.blocks-sandbox/config.json から API URL を解決する。
-import { api as blocksApi } from 'aws-blocks';
+// Phase 2: バックエンドは全て AWS Blocks に一本化。frontend も Blocks クライアント1本。
+// ローカル(npm run dev)では Blocks dev server に、デプロイ時はホスティング配下の
+// /.blocks-sandbox/config.json から API URL を解決する（ビルド時に amplify_outputs の
+// custom.blocksApiUrl から生成）。
+import { api } from 'aws-blocks';
 
-// ─── Amplify ネイティブ backend（Todo: AppSync + DynamoDB）───────────────────
-Amplify.configure(outputs);
-const dataClient = generateClient<Schema>();
-
-type Todo = Schema['Todo']['type'];
+type Todo = { pk: string; id: string; content: string; createdAt: number };
 
 export function App() {
-  // Amplify 側: Todo リスト
   const [todos, setTodos] = useState<Todo[]>([]);
   const [title, setTitle] = useState('');
-  // Blocks 側: 共有メモ
   const [note, setNote] = useState('');
   const [noteStatus, setNoteStatus] = useState('');
 
-  // Amplify Data client で Todo を読む（guest / identityPool）
   const loadTodos = async () => {
-    const { data } = await dataClient.models.Todo.list({ authMode: 'identityPool' });
-    setTodos(data);
+    setTodos(await api.listTodos());
   };
   const addTodo = async () => {
     const content = title.trim();
     if (!content) return;
-    await dataClient.models.Todo.create({ content }, { authMode: 'identityPool' });
+    await api.createTodo(content);
     setTitle('');
     loadTodos();
   };
   const removeTodo = async (id: string) => {
-    await dataClient.models.Todo.delete({ id }, { authMode: 'identityPool' });
+    await api.deleteTodo(id);
     loadTodos();
   };
 
-  // Blocks client で共有メモを読む
   const loadNote = async () => {
-    const { text } = await blocksApi.loadNote();
+    const { text } = await api.loadNote();
     setNote(text);
   };
   const saveNote = async () => {
     setNoteStatus('保存中…');
     try {
-      await blocksApi.saveNote(note);
+      await api.saveNote(note);
       setNoteStatus('保存しました ✓');
     } catch (e) {
       setNoteStatus(e instanceof Error ? `エラー: ${e.message}` : 'エラー');
@@ -62,15 +51,14 @@ export function App() {
     <div>
       <h1>Amplify Gen2 + AWS Blocks PoC</h1>
       <p style={{ color: '#666', fontSize: '0.9em' }}>
-        1つの画面が <strong>2つのバックエンド</strong>にアクセスしています。
-        Todo は <strong>Amplify ネイティブ</strong>（AppSync/DynamoDB）、共有メモは{' '}
-        <strong>AWS Blocks</strong>（KVStore）。Phase 1 ではクライアントも設定も別系統です。
+        <strong>Phase 2</strong>: バックエンドを <strong>AWS Blocks に一本化</strong>し、デプロイは
+        Amplify(<code>ampx</code>)。Todo も共有メモも <strong>1つの Blocks クライアント・1つの設定</strong>で動く。
       </p>
 
-      {/* ─── Amplify backend ─── */}
-      <div className="panel amplify">
-        <h2>📋 Todo（Amplify ネイティブ backend）</h2>
-        <p className="src">client: aws-amplify/data ・ config: amplify_outputs.json</p>
+      {/* ─── Todo（Blocks: DistributedTable）─── */}
+      <div className="panel blocks">
+        <h2>📋 Todo（AWS Blocks / DistributedTable）</h2>
+        <p className="src">client: aws-blocks ・ config: .blocks-sandbox/config.json</p>
         <div style={{ display: 'flex', gap: 8 }}>
           <input
             value={title}
@@ -94,9 +82,9 @@ export function App() {
         </ul>
       </div>
 
-      {/* ─── Blocks backend ─── */}
+      {/* ─── 共有メモ（Blocks: KVStore）─── */}
       <div className="panel blocks">
-        <h2>📝 共有メモ（AWS Blocks backend）</h2>
+        <h2>📝 共有メモ（AWS Blocks / KVStore）</h2>
         <p className="src">client: aws-blocks ・ config: .blocks-sandbox/config.json</p>
         <textarea
           value={note}
