@@ -318,6 +318,38 @@ createTodo→listTodos: { content: "deployed-todo-72515", pk: "todo", id: "...",
 
 ---
 
+## 補足: データ層のアーキテクチャ差（Amplify `data` ⇔ AWS Blocks）
+
+同じ「DynamoDB に保存する Todo」でも、**標準アーキテクチャがそもそも違う**。
+
+| | Amplify `data`（`defineData`） | AWS Blocks |
+|---|---|---|
+| フロント↔バック | **AppSync（GraphQL）** | **API Gateway（REST）+ JSON-RPC** |
+| コンピュート | 基本 CRUD は **Lambda なし**（AppSync の直接 DynamoDB リゾルバ） | **単一 Lambda** が全リクエスト処理（API GW → Lambda → DynamoDB を SDK 経由） |
+| リアルタイム | GraphQL Subscriptions（標準） | `Realtime` ブロックを足す（WebSocket） |
+| 認可 | スキーマに宣言（`allow.owner()` 等） | コード内で `auth.requireAuth(context)` |
+| スタイル | スキーマ・ファースト（GraphQL） | **コード・ファースト**（TS 関数が RPC エンドポイントに） |
+
+> `BlocksBackend` の JSDoc にも *"a single Lambda function fronted by API Gateway with RPC +
+> catch-all proxy routing"* と明記。`ApiNamespace` のメソッドも `KVStore`/`DistributedTable` の
+> 操作も**全部この1つの Lambda 経由**。
+
+**このPoCでの含意**: Phase 1→2 で Todo を Amplify `data`(AppSync) → Blocks(API GW+Lambda) に移したので、
+同じ DynamoDB 保存でも経路が変わった。
+- Phase 1 Todo: ブラウザ → **AppSync** → DynamoDB（Lambda を通らない）
+- Phase 2 Todo: ブラウザ → **API Gateway → Lambda** → DynamoDB
+
+ざっくりした傾向:
+- **AppSync 型**: 単純 CRUD は Lambda レスで速い・安い・スケールしやすい。GraphQL/リゾルバの世界観に乗る前提。
+- **API GW + Lambda 型（Blocks）**: API メソッドに任意の TS ロジックを書ける（コードファースト）。代わりに
+  全リクエストが Lambda を通る（コールドスタート・呼び出し課金）。
+
+> ⚠️ **あくまで「各フレームワークの標準」の話**。Amplify も Blocks も土台は CDK なので、
+> CDK を直接書けばどちらの構成でも組める（Amplify は `backend.createStack()` で任意の CDK construct を
+> 追加でき、実際このPoCの BlocksBackend 埋め込みもそれ）。「標準ではこうなる」という比較。
+
+---
+
 ## 結論
 
 <!-- 白黒ついた結論をここに記録 -->
