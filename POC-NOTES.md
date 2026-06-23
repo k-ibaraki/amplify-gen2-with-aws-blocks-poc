@@ -187,7 +187,9 @@ npm run dev   # Blocks dev server(:3001, mock) + Vite(:3000) を同時起動
 | デプロイ口 | コマンド | スタック | 主なリソース | フロント設定の出力先 |
 |---|---|---|---|---|
 | Amplify | `npx ampx sandbox` | `amplify-amplifygen2withawsblockspoc-...-sandbox-7dadc39086`（+auth/data ネスト） | Cognito / AppSync / DynamoDB(Todo) | `amplify_outputs.json` |
-| AWS Blocks | `npm run sandbox` | `blocks-poc-stack-<id>` | Lambda / API Gateway / DynamoDB(KVStore) | `.blocks-sandbox/config.json` |
+| AWS Blocks | `npm run sandbox` | `blocks-poc-stack-kibaraki-tk091d` | Lambda / API Gateway / DynamoDB(KVStore) | `.blocks-sandbox/config.json`（`environment: sandbox`） |
+
+→ 両方とも CREATE_COMPLETE。**2つの個人用サンドボックスが並立**（記事の「二重管理」図はこの状態をキャプチャ）。
 
 ### 🛑 ここで一旦停止 — 「二重で面倒」を体感する（＝一元化の動機）
 
