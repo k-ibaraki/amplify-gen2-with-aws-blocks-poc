@@ -8,6 +8,11 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "dev:server": "tsx watch aws-blocks/scripts/server.ts",
+    "dev:client": "vite",
+    "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
     "deploy:blocks": "tsx aws-blocks/scripts/deploy.ts",
     "destroy:blocks": "tsx aws-blocks/scripts/destroy.ts"
   },
@@ -21,14 +26,21 @@
   "devDependencies": {
     "@aws-amplify/backend": "^1.23.0",
     "@aws-amplify/backend-cli": "^1.8.3",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
     "aws-cdk-lib": "2.257.0",
+    "concurrently": "^8.2.0",
     "constructs": "^10.6.0",
     "esbuild": "^0.28.1",
     "tsx": "^4.22.4",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite": "^5.0.0"
   },
   "dependencies": {
     "@aws-blocks/blocks": "*",
-    "aws-amplify": "^6.18.0"
+    "aws-amplify": "^6.18.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }

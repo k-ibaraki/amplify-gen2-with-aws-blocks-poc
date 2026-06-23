@@ -1,32 +1,39 @@
 /**
- * AWS Blocks バックエンド本体（PoC 用・最小構成）。
+ * AWS Blocks バックエンド本体（PoC 用）。
  *
- * このPoCの検証主役は「KVStore が mock にフォールバックせず、実体（DynamoDB
- * テーブル）として synth に出るか」の一点。機能は意図的に最小で、文字列を
- * put / get できるだけの key-value API にしている。
+ * このアプリは「2つのバックエンド」を持つ Web アプリの **Blocks 側**を担当する。
+ *   - Amplify 側 : Todo リスト（AppSync + DynamoDB / amplify/data）
+ *   - Blocks 側  : 共有メモ（このファイル。KVStore = DynamoDB 1テーブル）
+ *
+ * frontend は Phase 1 では両方に別々のクライアントでアクセスする（＝二重で面倒）。
+ * Phase 2 では Amplify 側の Todo もこの Blocks に寄せ、デプロイを Amplify に一元化する。
  *
  * このファイルは2つのデプロイ経路で共有される：
- *   - ローカル/単独デプロイ : index.cdk.ts（BlocksStack）から読まれる
- *   - Amplify 一元化         : amplify/backend.ts の BlocksBackend.create() から読まれる
+ *   - ローカル/単独デプロイ : index.cdk.ts（BlocksStack）
+ *   - Amplify 一元化         : amplify/backend.ts の BlocksBackend.create()
  */
 import { ApiNamespace, Scope, KVStore } from '@aws-blocks/blocks';
 
 const scope = new Scope('blocks-poc');
 
-// KVStore = DynamoDB テーブル1個。--conditions=cdk が building block まで伝播すれば
-// 実テーブルが CloudFormation テンプレートに出る。伝播しなければ mock に落ちて消える
-// ＝ これが Phase 2 の mock 落ち判定の決め手になる。
-// removalPolicy: 'destroy' は PoC 後のテーブル削除を容易にするため。
+// 共有メモを保存する KVStore（DynamoDB テーブル1個）。
+// --conditions=cdk が building block まで伝播すれば実テーブルが synth に出る。
+// 伝播しなければ mock に落ちて消える ＝ Phase 2 の mock 落ち判定の決め手。
 const store = new KVStore(scope, 'store', { removalPolicy: 'destroy' });
 
-// KVStore のデータメソッド（get/put）はリクエスト時に実行する必要があるため、
-// トップレベルではなく ApiNamespace のメソッド内で呼ぶ。
+const NOTE_KEY = 'shared-note';
+
+// データメソッド（get/put）はリクエスト時に実行する必要があるため、
+// トップレベルではなく ApiNamespace のメソッド内で呼ぶ。認証なし（public）。
 export const api = new ApiNamespace(scope, 'api', (context) => ({
-  async set(key: string, value: string) {
-    await store.put(key, value);
-    return { ok: true };
+  /** 共有メモを取得する。未保存なら空文字。 */
+  async loadNote() {
+    const text = await store.get(NOTE_KEY);
+    return { text: (text as string | null) ?? '' };
   },
-  async get(key: string) {
-    return { value: await store.get(key) };
+  /** 共有メモを保存する。 */
+  async saveNote(text: string) {
+    await store.put(NOTE_KEY, text);
+    return { ok: true };
   },
 }));
