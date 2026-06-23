@@ -1,0 +1,34 @@
+{
+  "name": "amplify-gen2-with-aws-blocks-poc",
+  "version": "1.0.0",
+  "description": "PoC: AWS Blocks のコードを Amplify Gen2 のデプロイに一元化する",
+  "type": "module",
+  "workspaces": [
+    "aws-blocks"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "deploy:blocks": "tsx aws-blocks/scripts/deploy.ts",
+    "destroy:blocks": "tsx aws-blocks/scripts/destroy.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/k-ibaraki/amplify-gen2-with-aws-blocks-poc.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@aws-amplify/backend": "^1.23.0",
+    "@aws-amplify/backend-cli": "^1.8.3",
+    "aws-cdk-lib": "2.257.0",
+    "constructs": "^10.6.0",
+    "esbuild": "^0.28.1",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@aws-blocks/blocks": "*",
+    "aws-amplify": "^6.18.0"
+  }
+}

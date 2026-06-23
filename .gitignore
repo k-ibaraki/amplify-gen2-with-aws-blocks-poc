@@ -1,0 +1,17 @@
+# amplify
+node_modules
+.amplify
+amplify_outputs*
+amplifyconfiguration*
+
+# aws-blocks
+dist
+build-temp
+.blocks-sandbox
+cdk.out/
+aws-blocks/client.js
+aws-blocks/blocks.spec.json
+.bb-data/
+.blocks/
+*.log
+*.tsbuildinfo
