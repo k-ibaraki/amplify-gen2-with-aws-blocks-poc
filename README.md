@@ -96,8 +96,9 @@ npm run destroy:amplify       # 後始末
 
 | パス | 役割 |
 |---|---|
-| `aws-blocks/index.ts` | Blocks バックエンド本体（Todo=DistributedTable / 共有メモ=KVStore）。デプロイ経路間で共有 |
-| `aws-blocks/index.cdk.ts` | ローカル/Blocks 単独デプロイ用の皮（`BlocksStack`） |
+| `aws-blocks/index.ts` | Blocks バックエンド本体（Todo=DistributedTable / 共有メモ=KVStore）。定義はここに一本化 |
 | `aws-blocks/index.handler.ts` | Lambda ハンドラ |
+| `aws-blocks/scripts/server.ts` | ローカル mock dev server（`npm run back`/`dev`） |
+| `aws-blocks/scripts/use-amplify-backend.ts` | `front:amplify` 用（`custom.blocksApiUrl` を config に流し込む） |
 | `amplify/backend.ts` | `defineBackend({})` ＋ `BlocksBackend` 埋め込み（Amplify はデプロイの器） |
 | `src/App.tsx` | frontend（Blocks クライアント1本で Todo＋共有メモ） |

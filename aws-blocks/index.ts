@@ -10,9 +10,9 @@
  *
  * frontend は `import { api } from 'aws-blocks'` の **1クライアント**で両方を呼ぶ。
  *
- * このファイルは2つのデプロイ経路で共有される：
- *   - ローカル/単独    : index.cdk.ts（BlocksStack）
- *   - Amplify 一元化   : amplify/backend.ts の BlocksBackend.create()
+ * このファイルは2つの経路から読み込まれる（バックエンド定義はここに一本化）：
+ *   - ローカル開発 : aws-blocks/scripts/server.ts（mock dev server）
+ *   - デプロイ     : amplify/backend.ts の BlocksBackend.create()（ampx 経由）
  */
 import { ApiNamespace, Scope, KVStore, DistributedTable } from '@aws-blocks/blocks';
 import { z } from 'zod';
