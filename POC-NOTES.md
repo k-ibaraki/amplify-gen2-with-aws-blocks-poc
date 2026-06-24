@@ -299,6 +299,54 @@ createTodo→listTodos: { content: "deployed-todo-72515", pk: "todo", id: "...",
 あわせて Blocks 単体 CDK デプロイ用のファイル（`index.cdk.ts` / `cdk.json` / `scripts/{sandbox,deploy,destroy,…}.ts`）も削除。
 → 最終的なコマンド体系は `README.md` を参照。
 
+### 手順 2-6: frontend を Amplify Hosting で配信（GitHub 連携 CI/CD）
+
+Amplify コンソールで GitHub リポジトリを接続し、`main` への push で自動ビルド。標準ビルドでは
+足りないため `amplify.yml` をカスタムで用意した。**3つの要件**:
+
+1. **install は `npm install`**: `@aws-amplify` 系の zod バージョン競合で `npm ci` が
+   （クリーン再生成しても）通らないため（`Invalid: lock file's zod@3.24.2 does not satisfy zod@3.25.17`）。
+2. **backend は `NODE_OPTIONS="--conditions=cdk" npx ampx pipeline-deploy`**: 素だと mock 落ちの guard で停止。
+3. **frontend は `client.js` 生成 + config.json 生成**:
+   - CI は dev server を起動しないので `client.js` を `npm run build`（`generate:client`）で生成。
+   - `dist/.blocks-sandbox/config.json` を `amplify_outputs.json` の `custom.blocksApiUrl` から生成。
+
+#### 🐛 ハマり: ホスティングの frontend が API URL を解決できず（404）
+
+最初のデプロイは通ったが、ブラウザのコンソールで:
+```
+GET /.blocks-sandbox/config.json → 404
+Blocks API URL not configured...
+```
+
+**原因（一次情報で確認）**:
+- Blocks クライアントは**全環境共通で `/.blocks-sandbox/config.json` を fetch** してAPI URLを解決する
+  （本来の `Hosting` ブロックでも `config.json` を S3 に置き CloudFront が `/.blocks-sandbox/*` を配信＝設計どおり。
+  `@aws-blocks/core/dist/hosting.js`）。
+- ところが **Amplify Hosting の成果物グロブはドット始まりディレクトリ（`.blocks-sandbox/`）を拾わない** →
+  `dist/.blocks-sandbox/config.json` が配信されず 404。
+
+> ★ 本来の Blocks（CloudFront 単一オリジン）vs Amplify Hosting の差:
+> - **本来の Blocks**: CloudFront が frontend を配信し、`/aws-blocks/api` を **同一オリジンで API GW に proxy**。
+>   config.json の apiUrl は**相対パス**で CORS 不要。`/.blocks-sandbox/config.json` も S3 から配信。
+> - **Amplify Hosting**: frontend(Amplify) と API(生の API GW) が**別オリジン**＝クロスオリジン（CORS 必要、
+>   apiUrl は絶対）。さらにドットディレクトリ除外で config.json が 404。
+> - つまり「本番が `.blocks-sandbox` を読むのは仕様バグ」ではなく、**Blocks の frontend を Blocks の
+>   Hosting ではなく Amplify Hosting に載せた継ぎ目**。名前が紛らわしいのは事実（全環境共通の設定置き場）。
+
+**解決**: `amplify.yml` の `artifacts.files` に **`.blocks-sandbox/**` を明示追加**してドットディレクトリを
+配信対象に含めた（Amplify の土台は CloudFront+S3 でドットパス配信自体は可能）。frontend のコードは一切変えず、
+本来の `/.blocks-sandbox/config.json` パスのまま解決できる。CORS は backend 側で `.*` 許可済み。
+
+```bash
+curl -s -o /dev/null -w "%{http_code} %{content_type}" \
+  https://main.d1ux8vus81iszm.amplifyapp.com/.blocks-sandbox/config.json
+# → 200 application/json   （404 から解決）
+```
+
+→ **本番ホスティング URL でブラウザから Todo / 共有メモが両方動作**（Network で `api` が 200）。
+Amplify Hosting（frontend）＋ ampx（backend, Blocks リソース）の **end-to-end 成立**。
+
 ---
 
 ## Phase 3 — 成功判定と片付け
@@ -310,7 +358,7 @@ createTodo→listTodos: { content: "deployed-todo-72515", pk: "todo", id: "...",
 - [x] `custom.blocksApiUrl` を叩くと**実レスポンス**が返る（note/todo 往復）
 - [x] デプロイが **`ampx` 一発**で完結する（`npm run deploy:blocks`/`sandbox` 不要）
 - [x] ローカル `npm run dev`（`:3000`）が Amplify 非依存で動く（全 mock）
-- [ ] **frontend を Amplify Hosting で配信**し、ホスティング環境で両機能が動く（← 残り）
+- [x] **frontend を Amplify Hosting で配信**し、ホスティング環境で両機能が動く（手順 2-6）
 
 ### 片付け
 
@@ -377,4 +425,24 @@ createTodo→listTodos: { content: "deployed-todo-72515", pk: "todo", id: "...",
 
 ## 結論
 
-<!-- 白黒ついた結論をここに記録 -->
+**成立した。** バックエンドのリソース定義を **AWS Blocks に置いたまま、デプロイを Amplify Gen2 に一元化できる。**
+
+- `amplify/backend.ts` を `defineBackend({})` ＋ `BlocksBackend.create(backend.createStack('blocks'), …)` だけにし、
+  `ampx`（`sandbox` / `pipeline-deploy`）一発で Blocks のリソース（Lambda/API GW/DynamoDB）がデプロイされた。
+- `NODE_OPTIONS="--conditions=cdk"` を付ければ building block は **mock 落ちせず実 CDK construct に解決**（実 DynamoDB を確認）。
+- frontend は Amplify Hosting、backend は同じ `ampx` パイプライン、で **end-to-end が本番ホスティングURLで動作**。
+- ローカル開発は `npm run dev` で Amplify 非依存・全 mock のまま（Blocks の開発体験を維持）。
+
+### ただし「素直に一発」ではない（採用時の判断材料）
+
+| 論点 | 実際 |
+|---|---|
+| `--conditions=cdk` 必須 | 素の `npx ampx sandbox` は guard で停止。スクリプト/CI で `NODE_OPTIONS` 付与が必要。 |
+| CORS | Blocks の Hosting は CloudFront 同一オリジン proxy だが、Amplify Hosting は別オリジン → CORS 設定が要る（PoC は `.*`）。 |
+| config.json 配信 | `.blocks-sandbox/` がドット始まりで Amplify の成果物グロブから漏れる → `artifacts.files` に明示追加が必要。 |
+| `npm ci` | `@aws-amplify` 系の zod 競合で通らず、CI は `npm install`。 |
+| client.js 生成 | CI に dev server が無いので build 前段で明示生成。 |
+| データ層の設計差 | Amplify `data`(AppSync) と Blocks(API GW+Lambda) はアーキテクチャが別物（補足参照）。Todo を移すと経路が変わる。 |
+
+→ **「公開構築子＋開発側が想定済み」は事実**（`BlocksBackend.fullId` が `createStack('blocks')` を名指しでハンドル）。
+ただし**公式手順は未整備**で、上記の継ぎ目を自分で塞ぐ必要がある。本 PoC はその塞ぎ方まで含めて白黒つけた。
