@@ -23,6 +23,9 @@ frontend:
     baseDirectory: dist
     files:
       - '**/*'
+      # Blocks の設定はドット始まりの .blocks-sandbox/ に置かれるが、**/* では拾われない。
+      # 明示しないと /.blocks-sandbox/config.json が配信されず 404 になる。
+      - '.blocks-sandbox/**'
   cache:
     paths:
       - node_modules/**/*

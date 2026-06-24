@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 // Phase 2: バックエンドは全て AWS Blocks に一本化。frontend も Blocks クライアント1本。
-// ローカル(npm run dev)では Blocks dev server に、デプロイ時はホスティング配下の
-// /.blocks-sandbox/config.json から API URL を解決する（ビルド時に amplify_outputs の
-// custom.blocksApiUrl から生成）。
+// 接続先は全モード共通で Blocks の config.json（/.blocks-sandbox/config.json）から解決する。
+// その config.json を「何で埋めるか」だけがモードで変わる（dev=dev server / cloud=amplify_outputs）。
 import { api } from 'aws-blocks';
 
 type Todo = { pk: string; id: string; content: string; createdAt: number };

@@ -1,7 +1,12 @@
 /**
- * Amplify Hosting でフロントを配信する際、ビルド成果物 `dist/` の中に
- * `.blocks-sandbox/config.json` を置く。ブラウザの Blocks クライアントは
- * ホスティング配下の `/.blocks-sandbox/config.json` を読んで API URL を解決するため。
+ * Amplify Hosting でフロントを配信する際の Blocks 設定ファイルを生成する。
+ *
+ * ブラウザの Blocks クライアントは全モード共通で `/.blocks-sandbox/config.json` を読んで
+ * API URL を解決する（本来の Blocks の Hosting ブロックでも本番で同じパスを S3 から配信する）。
+ * そこで本番ビルドでも **同じパス `dist/.blocks-sandbox/config.json`** に書き出す。
+ *
+ * 注意: Amplify Hosting の標準の成果物グロブはドット始まりディレクトリを拾わないため、
+ * amplify.yml の artifacts.files に .blocks-sandbox 配下を明示追加して配信させる。
  *
  * API URL は backend デプロイ（ampx pipeline-deploy）が生成した
  * `amplify_outputs.json` の `custom.blocksApiUrl` から取る。
