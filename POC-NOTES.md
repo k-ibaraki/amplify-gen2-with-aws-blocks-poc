@@ -350,6 +350,31 @@ createTodo→listTodos: { content: "deployed-todo-72515", pk: "todo", id: "...",
 
 ---
 
+## 補足: frontend の接続先解決（`amplify_outputs.json` は直接使わない）
+
+一元化後、**frontend は Amplify SDK にも `amplify_outputs.json` にも依存しない**（`aws-amplify` 依存も削除済み）。
+接続先 API の解決は **Blocks 一本**で、ブラウザの Blocks クライアントが常に **`/.blocks-sandbox/config.json` の
+`apiUrl`** を読んで決める。`amplify_outputs.json` は「config.json に何を書くか」を変えるための間接的な材料に過ぎない。
+
+| 起動モード | `config.json` を書くのは | apiUrl の中身 |
+|---|---|---|
+| `npm run dev`（mock） | **Blocks の dev server**（起動時に自動生成） | `http://localhost:3001/aws-blocks/api` |
+| `npm run front:amplify` | `aws-blocks/scripts/use-amplify-backend.ts`（`amplify_outputs.json` の `custom.blocksApiUrl` を読む） | ampx デプロイ済みの API Gateway URL |
+
+```
+[ビルド/起動時] amplify_outputs.json(custom.blocksApiUrl)
+                  └─ use-amplify-backend.ts ──▶ .blocks-sandbox/config.json
+[実行時(ブラウザ)] frontend ──▶ config.json の apiUrl を読むだけ ──▶ Blocks API
+```
+
+- `amplify_outputs.json` を**実際に読むのは `use-amplify-backend.ts` だけ**。`amplify/backend.ts` は
+  `addOutput()` で**書く側**（読まない）。`src/App.tsx` での言及はコメントのみ。
+- だから `npm run dev`（mock）は **Amplify も `amplify_outputs.json` も登場せず**に動く（完全ローカル）。
+- frontend ↔ Amplify の結合は「**ビルド時に URL を1個渡すだけ**」。実行時の frontend は純 Blocks で Amplify を知らない。
+  → **Amplify＝デプロイ＋ホスティング専任 / アプリのコード（前後とも）＝Blocks** がコードでも徹底されている。
+
+---
+
 ## 結論
 
 <!-- 白黒ついた結論をここに記録 -->
