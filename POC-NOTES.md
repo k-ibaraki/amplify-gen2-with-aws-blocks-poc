@@ -113,7 +113,7 @@ npx ampx sandbox     # 個人用クラウド開発環境を起動（ファイル
 結果:
 - `✔ Deployment completed in 212.696 seconds`
 - `amplify_outputs.json` 生成、AppSync エンドポイント発行
-- 立ったスタック（ルート）: `amplify-amplifygen2withawsblockspoc-ibarakikeita-sandbox-7dadc39086`
+- 立ったスタック（ルート）: `amplify-amplifygen2withawsblockspoc-<user>-sandbox-xxxxxxxxxx`
   - ネスト: `...-auth179371D7-...`（Cognito）/ `...-data7552DF31-...`（AppSync + DynamoDB: Todo）
 
 → **Amplify 単独**は緑。Cognito + AppSync + DynamoDB(Todo) が立つ。
@@ -172,7 +172,7 @@ npm run dev   # Blocks dev server(:3001, mock) + Vite(:3000) を同時起動
 }
 ```
 
-→ **2バックエンドにアクセスする実 Web アプリが動作**。スクショ: `/tmp/poc-shots/02-after-actions.png`
+→ **2バックエンドにアクセスする実 Web アプリが動作**。スクショ: `（スクショ）`
 （オレンジ枠=Amplify Todo / 青枠=Blocks 共有メモ。各パネルに使用クライアントと設定ファイルを明記）。
 
 > ⚠️ **ローカル開発の非対称性（Phase 1 の地味な面倒）**: `npm run dev` 時、Blocks 側は
@@ -186,8 +186,8 @@ npm run dev   # Blocks dev server(:3001, mock) + Vite(:3000) を同時起動
 
 | デプロイ口 | コマンド | スタック | 主なリソース | フロント設定の出力先 |
 |---|---|---|---|---|
-| Amplify | `npx ampx sandbox` | `amplify-amplifygen2withawsblockspoc-...-sandbox-7dadc39086`（+auth/data ネスト） | Cognito / AppSync / DynamoDB(Todo) | `amplify_outputs.json` |
-| AWS Blocks | `npm run sandbox` | `blocks-poc-stack-kibaraki-tk091d` | Lambda / API Gateway / DynamoDB(KVStore) | `.blocks-sandbox/config.json`（`environment: sandbox`） |
+| Amplify | `npx ampx sandbox` | `amplify-amplifygen2withawsblockspoc-...-sandbox-xxxxxxxxxx`（+auth/data ネスト） | Cognito / AppSync / DynamoDB(Todo) | `amplify_outputs.json` |
+| AWS Blocks | `npm run sandbox` | `blocks-poc-stack-<sandbox-id>` | Lambda / API Gateway / DynamoDB(KVStore) | `.blocks-sandbox/config.json`（`environment: sandbox`） |
 
 → 両方とも CREATE_COMPLETE。**2つの個人用サンドボックスが並立**（記事の「二重管理」図はこの状態をキャプチャ）。
 
@@ -236,7 +236,7 @@ NODE_OPTIONS="--conditions=cdk" npx ampx sandbox
 
 - `✔ Deployment completed in 233.371 seconds`
 - 既存 sandbox から **auth/data（Cognito/AppSync/Todo）を削除**し、**blocks ネストスタックを追加**する更新。
-- `amplify_outputs.json` に **`custom.blocksApiUrl: https://0j8dhbtbzk.execute-api.ap-northeast-1.amazonaws.com/prod/aws-blocks/api`** が出力。
+- `amplify_outputs.json` に **`custom.blocksApiUrl: https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/prod/aws-blocks/api`** が出力。
 - `npm run deploy:blocks` / `npm run sandbox`（Blocks 側デプロイ）は**もう不要**。デプロイ口は ampx 一本。
 
 ### 手順 2-3: 検証 — mock 落ちしていないか＆実応答（このPoCの核）
@@ -244,8 +244,8 @@ NODE_OPTIONS="--conditions=cdk" npx ampx sandbox
 **(A) デプロイ済みスタックの実リソース**: Amplify 配下の blocks ネストスタックに **DynamoDB テーブル2つ**:
 
 ```
-amplify-...-sandbox-7dadc39086-blocks-blocks-poc-store    （KVStore: 共有メモ）
-amplify-...-sandbox-7dadc39086-blocks-blocks-poc-todos    （DistributedTable: Todo）
+amplify-...-sandbox-xxxxxxxxxx-blocks-blocks-poc-store    （KVStore: 共有メモ）
+amplify-...-sandbox-xxxxxxxxxx-blocks-blocks-poc-todos    （DistributedTable: Todo）
 ```
 
 → `--conditions=cdk` が **ampx の tsImport → BlocksBackend.create → index.ts のネスト import** まで伝播し、
@@ -254,7 +254,7 @@ building block が **mock ではなく実 CDK construct に解決**された。m
 **(B) API の実応答（end-to-end の本証明）**: `custom.blocksApiUrl` に実リクエスト:
 
 ```
-[Blocks] Using API (env BLOCKS_API_URL): https://0j8dhbtbzk.execute-api.ap-northeast-1.amazonaws.com/prod/aws-blocks/api
+[Blocks] Using API (env BLOCKS_API_URL): https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/prod/aws-blocks/api
 saveNote→loadNote: { text: "deployed-note-72515" }              # KVStore 実往復
 createTodo→listTodos: { content: "deployed-todo-72515", pk: "todo", id: "...", createdAt: ... }  # DistributedTable 実往復
 ```
@@ -340,7 +340,7 @@ Blocks API URL not configured...
 
 ```bash
 curl -s -o /dev/null -w "%{http_code} %{content_type}" \
-  https://main.d1ux8vus81iszm.amplifyapp.com/.blocks-sandbox/config.json
+  https://main.<app-id>.amplifyapp.com/.blocks-sandbox/config.json
 # → 200 application/json   （404 から解決）
 ```
 
