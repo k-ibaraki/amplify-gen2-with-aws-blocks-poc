@@ -1,0 +1,28 @@
+# Amplify Hosting ビルド定義（この統合プロジェクト用のカスタム設定）
+#
+# 標準の自動ビルドではなくこのファイルが必要な理由:
+#   - backend: ampx に NODE_OPTIONS="--conditions=cdk" が必須（無いと building block が
+#     mock に落ちかけて assertCdkConditionActive() が即エラー）。
+#   - frontend: ビルド成果物 dist/ に Blocks 用の .blocks-sandbox/config.json を生成し、
+#     custom.blocksApiUrl（backend デプロイが出力）をブラウザのクライアントへ渡す。
+#   - install: @aws-amplify 系の zod 競合で `npm ci` が通らないため `npm install` を使う。
+version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - npm install --no-audit --no-fund
+        - NODE_OPTIONS="--conditions=cdk" npx ampx pipeline-deploy --branch "$AWS_BRANCH" --app-id "$AWS_APP_ID"
+frontend:
+  phases:
+    build:
+      commands:
+        - npm run build
+        - npx tsx aws-blocks/scripts/write-hosting-config.ts
+  artifacts:
+    baseDirectory: dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
