@@ -1,11 +1,13 @@
 # amplify-gen2-with-aws-blocks-poc
 
-AWS Blocks のコード（バックエンド定義）を保ったまま、デプロイを **Amplify Gen2（`ampx`）に一元化**できるかを検証する PoC。
+AWS Blocks のコード（バックエンド定義）を保ったまま、デプロイを **Amplify Gen2（`ampx`）に一元化**できるかを検証する PoC。**結論: できた。**
 
-題材は1つの Web アプリ（React + Vite）。**Todo は Amplify ネイティブ**（AppSync/DynamoDB）、
-**共有メモは AWS Blocks**（KVStore）で、frontend が2つのバックエンドにアクセスする。
+題材は1つの Web アプリ（React + Vite、Todo ＋ 共有メモ）。最終構成は **バックエンドを全て AWS Blocks に一本化**
+（Todo = `DistributedTable` / 共有メモ = `KVStore`）し、`amplify/backend.ts` に **`BlocksBackend` を埋め込んで `ampx` でデプロイ**、
+**frontend は Amplify Hosting** で配信する。ローカル開発は Blocks のまま（`npm run dev`）。
 
-> このリポジトリは PoC の進行に合わせて段階的に更新する。現在の状態: **Phase 1（2バックエンド並立）**。
+> ここに至る過程（**Phase 1**: Amplify Todo ＋ Blocks メモの2バックエンド並立 → **Phase 2**: Blocks 一本化）の
+> 詳細な実行ログは [`POC-NOTES.md`](./POC-NOTES.md)。コード参照タグ: `phase1`（2バックエンド）/ `phase2`（一本化・最終）。
 
 ---
 
@@ -80,13 +82,30 @@ npm run destroy:amplify       # 後始末
 
 ---
 
+## デプロイ（本番）: Amplify Hosting で frontend ＋ backend を配信
+
+GitHub リポジトリを Amplify Hosting に接続すると、`main` への push で自動ビルド・デプロイされる。
+標準ビルドでは足りないので、ルートの [`amplify.yml`](./amplify.yml) で次の3点をカスタムしている。
+
+1. **install は `npm install`** — `@aws-amplify` 系の zod 競合で `npm ci` が（lock 再生成しても）通らないため。
+2. **backend は `NODE_OPTIONS="--conditions=cdk" npx ampx pipeline-deploy`** — 無いと building block が mock に落ちて止まる。
+3. **frontend は build 時に `client.js` と config.json を生成**
+   - CI には dev server が無いので `npm run build`（内部で `generate:client`）が `aws-blocks/client.js` を生成。
+   - `aws-blocks/scripts/write-hosting-config.ts` が `amplify_outputs.json` の `custom.blocksApiUrl` を読んで
+     `dist/.blocks-sandbox/config.json` を生成。
+
+> 📌 Blocks の設定は `/.blocks-sandbox/config.json`（ドット始まり）に置かれるが、Amplify の成果物グロブ `**/*` は
+> ドット始まりディレクトリを拾わない。`amplify.yml` の `artifacts.files` に `.blocks-sandbox/**` を明示追加して配信させている。
+
+---
+
 ## PoC の進め方（フェーズ）
 
 - **Phase 1（完了）**: frontend が2バックエンド（Amplify ネイティブ Todo / Blocks 共有メモ）に別々にアクセス
   ＝デプロイ2回・設定2系統・クライアント2つの**二重管理**を体感。
 - **Phase 2（完了）**: バックエンドを **AWS Blocks に一本化**（Todo も DistributedTable 化）し、`amplify/backend.ts` に
-  `BlocksBackend` を埋め込んで **`ampx` 一発デプロイ**。実 DynamoDB が出る（mock 落ちなし）ことを確認済み。
-- **残り**: frontend を **Amplify Hosting** で配信し、ホスティング環境で動作確認。
+  `BlocksBackend` を埋め込んで **`ampx` 一発デプロイ**（実 DynamoDB・mock 落ちなし）。さらに frontend を
+  **Amplify Hosting（GitHub 連携 CI/CD）** で配信し、本番 URL で end-to-end 動作を確認。
 
 詳細な実行ログは [`POC-NOTES.md`](./POC-NOTES.md)。
 
@@ -100,5 +119,8 @@ npm run destroy:amplify       # 後始末
 | `aws-blocks/index.handler.ts` | Lambda ハンドラ |
 | `aws-blocks/scripts/server.ts` | ローカル mock dev server（`npm run back`/`dev`） |
 | `aws-blocks/scripts/use-amplify-backend.ts` | `front:amplify` 用（`custom.blocksApiUrl` を config に流し込む） |
+| `aws-blocks/scripts/generate-client.ts` | CI 用 `client.js` 生成（dev server 非起動時。`npm run build` が使用） |
+| `aws-blocks/scripts/write-hosting-config.ts` | Amplify Hosting 用 `config.json` 生成（`custom.blocksApiUrl` から） |
 | `amplify/backend.ts` | `defineBackend({})` ＋ `BlocksBackend` 埋め込み（Amplify はデプロイの器） |
+| `amplify.yml` | Amplify Hosting のビルド定義（install/backend/frontend のカスタム） |
 | `src/App.tsx` | frontend（Blocks クライアント1本で Todo＋共有メモ） |
