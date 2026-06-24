@@ -12,7 +12,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  * Amplify が作るスタックの中に AWS Blocks のバックエンドを埋め込む。
  *
  * これにより `ampx` 一発で AWS Blocks のリソース（Lambda/API GW/DynamoDB）が
- * デプロイされる。npm run deploy:blocks（= cdk deploy）は不要になる。
+ * デプロイされる。AWS Blocks 単体の cdk deploy 経路は不要になる。
  */
 const backend = defineBackend({});
 

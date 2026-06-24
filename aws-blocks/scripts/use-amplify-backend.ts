@@ -6,8 +6,8 @@
  * .blocks-sandbox/config.json にその URL を書き込む。これにより `vite` を起動すると
  * ブラウザが ampx デプロイ済みの API Gateway を直接叩く（CORS は backend 側で許可済み）。
  *
- * 使い方: `npm run dev:amplify`（= このスクリプト → vite）
- * 前提: 先に `npm run amplify:sandbox` で backend をデプロイ済みであること。
+ * 使い方: `npm run front:amplify`（= このスクリプト → vite）
+ * 前提: 先に `npm run deploy:amplify` で backend をデプロイ済みであること。
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
@@ -16,8 +16,8 @@ const apiUrl: string | undefined = outputs?.custom?.blocksApiUrl;
 
 if (!apiUrl) {
   console.error(
-    '[dev:amplify] amplify_outputs.json に custom.blocksApiUrl がありません。\n' +
-    '  先に `npm run amplify:sandbox` で backend をデプロイしてください。',
+    '[front:amplify] amplify_outputs.json に custom.blocksApiUrl がありません。\n' +
+    '  先に `npm run deploy:amplify` で backend をデプロイしてください。',
   );
   process.exit(1);
 }
@@ -28,5 +28,5 @@ writeFileSync(
   JSON.stringify({ apiUrl, environment: 'amplify' }, null, 2),
 );
 
-console.log('[dev:amplify] Blocks client → ' + apiUrl);
-console.log('[dev:amplify] このあと vite が起動します。http://localhost:3000 を開いてください。');
+console.log('[front:amplify] Blocks client → ' + apiUrl);
+console.log('[front:amplify] このあと vite が起動します。http://localhost:3000 を開いてください。');

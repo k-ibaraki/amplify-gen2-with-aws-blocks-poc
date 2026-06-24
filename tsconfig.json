@@ -17,7 +17,6 @@
   },
   "include": [
     "aws-blocks/**/*",
-    "src/**/*",
-    "test/**/*"
+    "src/**/*"
   ]
 }
