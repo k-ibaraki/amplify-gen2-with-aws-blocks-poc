@@ -14,10 +14,48 @@
  *   - ローカル開発 : aws-blocks/scripts/server.ts（mock dev server）
  *   - デプロイ     : amplify/backend.ts の BlocksBackend.create()（ampx 経由）
  */
-import { ApiNamespace, Scope, KVStore, DistributedTable } from '@aws-blocks/blocks';
+import { ApiNamespace, Scope, KVStore, DistributedTable, AuthCognito } from '@aws-blocks/blocks';
 import { z } from 'zod';
 
 const scope = new Scope('blocks-poc');
+
+// ─── Auth（Amplify ネイティブ Cognito を Blocks が消費）──────────────────────
+// 続編の主題: Cognito リソースは Amplify(defineAuth)が持ち、Blocks はそれを
+// fromExisting で wrap して「消費」するだけ（自前プールは作らない）。
+//
+//   - ampx デプロイ時 : amplify/backend.ts が AMPLIFY_USER_POOL_ID(env) をセット
+//                       → fromExisting(poolId) で Amplify の既存プールを wrap。
+//   - ローカル dev(mock): env が無い → userPool 未指定 → Blocks が自前プールを
+//                       mock で立てる。よって `npm run dev` は Amplify 非依存のまま。
+//
+// clientId は省略する。fromExisting は clientId 省略時に既存プール上へ
+// USER_PASSWORD_AUTH 対応の UserPoolClient を自前生成するので、Amplify 既定
+// クライアントの認証フロー非互換を踏まない。
+const amplifyUserPoolId = process.env.AMPLIFY_USER_POOL_ID;
+const auth = new AuthCognito(scope, 'auth', {
+  signInWith: 'email',
+  userPool: amplifyUserPoolId ? AuthCognito.fromExisting(amplifyUserPoolId) : undefined,
+  // クラウド（Sandbox/本番）では frontend と API が別オリジンになるため、
+  // セッション Cookie を SameSite=None; Secure（cross-domain）にする必要がある。
+  // ⚠️ crossDomain は **Lambda ランタイムで評価**される。AMPLIFY_USER_POOL_ID は
+  //    synth 専用（backend.ts が synth プロセスで set するだけ）でランタイムには無いので
+  //    ここでは使えない。backend.ts が Lambda env に立てる BLOCKS_CROSS_DOMAIN を読む。
+  //    ローカル mock dev は未設定 → false（loopback なので Lax で可）。
+  crossDomain: process.env.BLOCKS_CROSS_DOMAIN === 'true',
+  // ローカル mock 限定: mock にはメール送信が無いため、確認コードは `codeDelivery`
+  // を渡さないと握り潰される。dev サーバ(`npm run dev` の [back]) のコンソールに出す。
+  // codeDelivery は mock 専用オプション（クラウドは実 Cognito がメール送信するので不要）。
+  ...(amplifyUserPoolId
+    ? {}
+    : {
+        codeDelivery: async (username: string, code: string, purpose: string) => {
+          console.log(`\n🔑 [mock auth] ${purpose} の確認コード（${username}）: ${code}\n`);
+        },
+      }),
+});
+
+// <Authenticator> UI を駆動する状態機械 API（frontend は authApi で呼ぶ）。
+export const authApi = auth.createApi();
 
 // ─── Todo（DistributedTable = DynamoDB）─────────────────────────────────────
 // 認証なしの共有 Todo リスト。全件を固定パーティション 'todo' に入れて query で一覧する。
@@ -37,30 +75,38 @@ const TODO_PK = 'todo';
 const store = new KVStore(scope, 'store', { removalPolicy: 'destroy' });
 const NOTE_KEY = 'shared-note';
 
-// データメソッドはリクエスト時に実行する必要があるため ApiNamespace 内で呼ぶ。認証なし。
+// データメソッドはリクエスト時に実行する必要があるため ApiNamespace 内で呼ぶ。
+// 全メソッド冒頭で `auth.requireAuth(context)` を呼び、認証必須にする。
+// → Amplify が発行した Cognito の JWT を Blocks の Lambda が検証する（cloud 時）。
+//   Cognito トリガーは使わず request 時に検証する（auth→blocks の矢印を作らない＝循環回避）。
 export const api = new ApiNamespace(scope, 'api', (context) => ({
   // --- Todo ---
   async listTodos() {
+    await auth.requireAuth(context);
     return await Array.fromAsync(
       todos.query({ where: { pk: { equals: TODO_PK } } }),
     );
   },
   async createTodo(content: string) {
+    await auth.requireAuth(context);
     const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     await todos.put({ pk: TODO_PK, id, content, createdAt: Date.now() });
     return { ok: true, id };
   },
   async deleteTodo(id: string) {
+    await auth.requireAuth(context);
     await todos.delete({ pk: TODO_PK, id });
     return { ok: true };
   },
 
   // --- 共有メモ ---
   async loadNote() {
+    await auth.requireAuth(context);
     const text = await store.get(NOTE_KEY);
     return { text: (text as string | null) ?? '' };
   },
   async saveNote(text: string) {
+    await auth.requireAuth(context);
     await store.put(NOTE_KEY, text);
     return { ok: true };
   },

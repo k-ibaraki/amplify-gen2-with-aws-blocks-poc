@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
-// Phase 2: バックエンドは全て AWS Blocks に一本化。frontend も Blocks クライアント1本。
-// 接続先は全モード共通で Blocks の config.json（/.blocks-sandbox/config.json）から解決する。
-// その config.json を「何で埋めるか」だけがモードで変わる（dev=dev server / cloud=amplify_outputs）。
-import { api } from 'aws-blocks';
+import { useEffect, useRef, useState } from 'react';
+// バックエンドは AWS Blocks。認証は Amplify ネイティブ Cognito を Blocks が消費（fromExisting）。
+// frontend は `aws-blocks` クライアント1本のまま（aws-amplify は使わない＝純 Blocks 維持）。
+import { api, authApi } from 'aws-blocks';
+import { AccountMenuBar, onAuthChange } from '@aws-blocks/blocks/ui';
 
 type Todo = { pk: string; id: string; content: string; createdAt: number };
+type User = { username: string; userId: string };
 
-export function App() {
+function Workspace() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
@@ -47,17 +48,11 @@ export function App() {
   }, []);
 
   return (
-    <div>
-      <h1>Amplify Gen2 + AWS Blocks PoC</h1>
-      <p style={{ color: '#666', fontSize: '0.9em' }}>
-        <strong>Phase 2</strong>: バックエンドを <strong>AWS Blocks に一本化</strong>し、デプロイは
-        Amplify(<code>ampx</code>)。Todo も共有メモも <strong>1つの Blocks クライアント・1つの設定</strong>で動く。
-      </p>
-
-      {/* ─── Todo（Blocks: DistributedTable）─── */}
+    <>
+      {/* ─── Todo（Blocks: DistributedTable・認証必須）─── */}
       <div className="panel blocks">
         <h2>📋 Todo（AWS Blocks / DistributedTable）</h2>
-        <p className="src">client: aws-blocks ・ config: .blocks-sandbox/config.json</p>
+        <p className="src">client: aws-blocks ・ 認証必須（requireAuth）</p>
         <div style={{ display: 'flex', gap: 8 }}>
           <input
             value={title}
@@ -81,10 +76,10 @@ export function App() {
         </ul>
       </div>
 
-      {/* ─── 共有メモ（Blocks: KVStore）─── */}
+      {/* ─── 共有メモ（Blocks: KVStore・認証必須）─── */}
       <div className="panel blocks">
         <h2>📝 共有メモ（AWS Blocks / KVStore）</h2>
-        <p className="src">client: aws-blocks ・ config: .blocks-sandbox/config.json</p>
+        <p className="src">client: aws-blocks ・ 認証必須（requireAuth）</p>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -98,6 +93,34 @@ export function App() {
           <span style={{ color: '#888', fontSize: '0.85em' }}>{noteStatus}</span>
         </div>
       </div>
+    </>
+  );
+}
+
+export function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // サインイン/アカウントメニュー（Blocks の auth UI。authApi が Cognito を駆動）。
+  useEffect(() => {
+    if (menuRef.current && !menuRef.current.hasChildNodes()) {
+      menuRef.current.appendChild(AccountMenuBar(authApi));
+    }
+  }, []);
+  // ログイン状態を購読（サインイン/アウトで再描画）。
+  useEffect(() => onAuthChange(authApi, (u) => setUser(u)), []);
+
+  return (
+    <div>
+      <div ref={menuRef} />
+      <h1>Amplify Gen2 + AWS Blocks PoC</h1>
+      <p style={{ color: '#666', fontSize: '0.9em' }}>
+        バックエンドは <strong>AWS Blocks</strong>。認証は <strong>Amplify ネイティブ Cognito</strong> を
+        Blocks が <code>fromExisting</code> で消費。API は <strong>認証必須</strong>。
+      </p>
+
+      {!user && <p style={{ color: '#888' }}>サインインして始めてください。</p>}
+      {user && <Workspace />}
     </div>
   );
 }
