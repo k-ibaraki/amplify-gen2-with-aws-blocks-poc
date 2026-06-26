@@ -12,9 +12,9 @@
     "front": "vite",
     "back": "tsx watch aws-blocks/scripts/server.ts",
     "front:amplify": "tsx aws-blocks/scripts/use-amplify-backend.ts && vite",
-    "deploy:amplify": "NODE_OPTIONS=--conditions=cdk ampx sandbox",
-    "deploy:amplify:once": "NODE_OPTIONS=--conditions=cdk ampx sandbox --once",
-    "destroy:amplify": "ampx sandbox delete",
+    "sandbox:amplify": "NODE_OPTIONS=--conditions=cdk ampx sandbox",
+    "sandbox:amplify:once": "NODE_OPTIONS=--conditions=cdk ampx sandbox --once",
+    "sandbox:amplify:delete": "ampx sandbox delete",
     "generate:client": "node --conditions=aws-runtime --import tsx aws-blocks/scripts/generate-client.ts",
     "build": "npm run generate:client && tsc --noEmit && vite build",
     "preview": "vite preview"
@@ -27,7 +27,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@aws-amplify/backend": "^1.23.0",
+    "@aws-amplify/backend": "^1.2.1",
     "@aws-amplify/backend-cli": "^1.8.3",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
@@ -38,7 +38,7 @@
     "esbuild": "^0.28.1",
     "tsx": "^4.22.4",
     "typescript": "^5.9.3",
-    "vite": "^5.0.0"
+    "vite": "^8.1.0"
   },
   "dependencies": {
     "@aws-blocks/blocks": "*",
