@@ -7,7 +7,7 @@
  * ブラウザが ampx デプロイ済みの API Gateway を直接叩く（CORS は backend 側で許可済み）。
  *
  * 使い方: `npm run front:amplify`（= このスクリプト → vite）
- * 前提: 先に `npm run deploy:amplify` で backend をデプロイ済みであること。
+ * 前提: 先に `npm run sandbox:amplify` で backend を sandbox デプロイ済みであること。
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
@@ -17,7 +17,7 @@ const apiUrl: string | undefined = outputs?.custom?.blocksApiUrl;
 if (!apiUrl) {
   console.error(
     '[front:amplify] amplify_outputs.json に custom.blocksApiUrl がありません。\n' +
-    '  先に `npm run deploy:amplify` で backend をデプロイしてください。',
+    '  先に `npm run sandbox:amplify` で backend を sandbox デプロイしてください。',
   );
   process.exit(1);
 }
