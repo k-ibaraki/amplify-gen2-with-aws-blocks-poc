@@ -71,7 +71,7 @@ NODE_OPTIONS=--conditions=cdk npx ampx sandbox --once
 # → ✔ Deployment completed in 192.826 seconds
 ```
 - `Circular dependency` エラーは **一切なし**。CloudFormation がスタックを受理して CREATE_COMPLETE（CFN は循環を含むスタックを拒否するので、完走＝循環なしの一次証拠）。
-- 出力: `auth.user_pool_id = ap-northeast-1_448nP6K4p` / `custom.blocksApiUrl = https://anthol3x59.execute-api.ap-northeast-1.amazonaws.com/prod/aws-blocks/api`
+- 出力: `auth.user_pool_id = ap-northeast-1_xxxxxxxxx` / `custom.blocksApiUrl = https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/prod/aws-blocks/api`
 
 **実テンプレによる裏づけ（`.amplify/artifacts/cdk.out`）**:
 
