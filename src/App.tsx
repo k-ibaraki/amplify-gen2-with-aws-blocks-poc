@@ -1,11 +1,61 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 // バックエンドは AWS Blocks。認証は Amplify ネイティブ Cognito を Blocks が消費（fromExisting）。
 // frontend は `aws-blocks` クライアント1本のまま（aws-amplify は使わない＝純 Blocks 維持）。
 import { api, authApi } from 'aws-blocks';
-import { AccountMenuBar, onAuthChange } from '@aws-blocks/blocks/ui';
+import { Authenticator, onAuthChange, broadcastAuthChange } from '@aws-blocks/blocks/ui';
 
 type Todo = { pk: string; id: string; content: string; createdAt: number };
-type User = { username: string; userId: string };
+// username は Cognito では UUID、mock では email になる。表示は email 属性で統一する。
+type User = { username: string; userId: string; attributes?: { email?: string } };
+
+// サインイン用 Authenticator をモーダルで開く（本家 AccountMenuBar と同じ挙動）。
+function openSignInModal() {
+  const modal = document.createElement('div');
+  modal.style.cssText =
+    'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000';
+  const content = document.createElement('div');
+  content.style.cssText = 'background:#fff;border-radius:8px;padding:20px;max-width:400px;position:relative';
+  const close = document.createElement('button');
+  close.textContent = '✕';
+  close.style.cssText = 'position:absolute;top:8px;right:8px;border:none;background:none;font-size:20px;cursor:pointer';
+  close.addEventListener('click', () => modal.remove());
+  content.appendChild(close);
+  content.appendChild(Authenticator(authApi));
+  modal.appendChild(content);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+  // サインインできたらモーダルを閉じる
+  const unsub = onAuthChange(authApi, (u) => {
+    if (u) {
+      modal.remove();
+      unsub();
+    }
+  });
+  document.body.appendChild(modal);
+}
+
+// 本家 AccountMenuBar は `user.username` 固定表示なので、email を表示する版を自前で用意（B案）。
+// mock=email / Cognito=UUID の不一致を、email 属性で統一する。
+function AccountBar({ user }: { user: User | null }) {
+  const signOut = async () => {
+    await authApi.setAuthState({ action: 'signOut' });
+    broadcastAuthChange(null);
+  };
+  const label = user?.attributes?.email ?? user?.username ?? '';
+  return (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid #eee' }}>
+      {user ? (
+        <>
+          <span style={{ fontSize: 14 }}>👤 {label}</span>
+          <button onClick={signOut}>Sign Out</button>
+        </>
+      ) : (
+        <button onClick={openSignInModal}>Sign In</button>
+      )}
+    </div>
+  );
+}
 
 function Workspace() {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -99,20 +149,13 @@ function Workspace() {
 
 export function App() {
   const [user, setUser] = useState<User | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
 
-  // サインイン/アカウントメニュー（Blocks の auth UI。authApi が Cognito を駆動）。
-  useEffect(() => {
-    if (menuRef.current && !menuRef.current.hasChildNodes()) {
-      menuRef.current.appendChild(AccountMenuBar(authApi));
-    }
-  }, []);
   // ログイン状態を購読（サインイン/アウトで再描画）。
   useEffect(() => onAuthChange(authApi, (u) => setUser(u)), []);
 
   return (
     <div>
-      <div ref={menuRef} />
+      <AccountBar user={user} />
       <h1>Amplify Gen2 + AWS Blocks PoC</h1>
       <p style={{ color: '#666', fontSize: '0.9em' }}>
         バックエンドは <strong>AWS Blocks</strong>。認証は <strong>Amplify ネイティブ Cognito</strong> を
