@@ -25,8 +25,17 @@ function openSignInModal() {
   modal.addEventListener('click', (e) => {
     if (e.target === modal) modal.remove();
   });
-  // サインインできたらモーダルを閉じる
+  // サインインできたらモーダルを閉じる。
+  // 注意: onAuthChange は購読時に「最後に分かっている user」で同期発火する。サインアウト
+  // 直後は cache.state が更新されない（更新する updateState は非 export）ため、古い user で
+  // 即発火してモーダルを開いた瞬間に閉じてしまう（＝Sign In ボタンが効かないように見える）。
+  // → 開いた時点の最初の発火は無視し、その後の「サインインへの遷移」でだけ閉じる。
+  let first = true;
   const unsub = onAuthChange(authApi, (u) => {
+    if (first) {
+      first = false;
+      return;
+    }
     if (u) {
       modal.remove();
       unsub();
