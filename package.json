@@ -14,7 +14,7 @@
     "front:amplify": "tsx aws-blocks/scripts/use-amplify-backend.ts && vite",
     "sandbox:amplify": "NODE_OPTIONS=--conditions=cdk ampx sandbox",
     "sandbox:amplify:once": "NODE_OPTIONS=--conditions=cdk ampx sandbox --once",
-    "sandbox:amplify:delete": "ampx sandbox delete",
+    "sandbox:amplify:delete": "NODE_OPTIONS=--conditions=cdk ampx sandbox delete",
     "generate:client": "node --conditions=aws-runtime --import tsx aws-blocks/scripts/generate-client.ts",
     "build": "npm run generate:client && tsc --noEmit && vite build",
     "preview": "vite preview"
