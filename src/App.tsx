@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 // バックエンドは AWS Blocks。認証は Amplify ネイティブ Cognito を Blocks が消費（fromExisting）。
 // frontend は `aws-blocks` クライアント1本のまま（aws-amplify は使わない＝純 Blocks 維持）。
 import { api, authApi } from 'aws-blocks';
-import { Authenticator, onAuthChange, broadcastAuthChange } from '@aws-blocks/blocks/ui';
+import { Authenticator, onAuthChange } from '@aws-blocks/blocks/ui';
 
 type Todo = { pk: string; id: string; content: string; createdAt: number };
 // username は Cognito では UUID、mock では email になる。表示は email 属性で統一する。
@@ -48,8 +48,12 @@ function openSignInModal() {
 // mock=email / Cognito=UUID の不一致を、email 属性で統一する。
 function AccountBar({ user }: { user: User | null }) {
   const signOut = async () => {
+    // サインアウト（サーバ側 session 削除＋Cookie 破棄）後にページを reload する。
+    // Blocks の auth 状態キャッシュ(cache.state)を更新する updateState は非 export のため
+    // 自前バーからはキャッシュをクリアできず、放置すると次のサインインで Authenticator が
+    // 古い状態（"Signed in as …"）を描画する。reload で確実にリセットして防ぐ。
     await authApi.setAuthState({ action: 'signOut' });
-    broadcastAuthChange(null);
+    window.location.reload();
   };
   const label = user?.attributes?.email ?? user?.username ?? '';
   return (
