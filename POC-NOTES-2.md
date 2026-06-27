@@ -113,6 +113,7 @@ NODE_OPTIONS=--conditions=cdk npx ampx sandbox --once
 ### frontend（`src/App.tsx`）
 - `import { api, authApi } from 'aws-blocks'` ＋ `import { AccountMenuBar, onAuthChange } from '@aws-blocks/blocks/ui'`。
 - `AccountMenuBar(authApi)` でサインイン/アカウントメニュー、`onAuthChange` でログイン状態購読。未ログイン時は機能を隠す。
+  - ※ この時点では**公式 `AccountMenuBar`** を使用。後に **email 表示のため自前 `AccountBar` ＋ `Authenticator` モーダルに差し替え**た（→ 補足「落とし穴①②」）。
 - **`aws-amplify` は不使用**（frontend は純 Blocks のまま）。
 
 ### ローカル（mock）検証 — ✅

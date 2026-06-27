@@ -41,7 +41,10 @@ const blocks = await BlocksBackend.create(blocksStack, 'blocks', {
 // PoC: 後始末しやすいよう全リソースを削除可能に
 RemovalPolicies.of(blocksStack).destroy();
 
-// CORS をすべて許可（PoC のため。本番は Amplify Hosting のドメインに絞る）
+// CORS をすべて許可（PoC のため）。
+// ⚠️ 認証 Cookie を使うため、本番でこのワイルドカードのままだと任意オリジンがユーザーの
+//    Cookie 付きで API を叩いて結果を読める（CSRF/クロスオリジン情報漏れ）。
+//    本番は許可 origin を Amplify Hosting のドメインに必ず絞ること。
 blocks.handler.addEnvironment('CORS_ALLOWED_ORIGINS', '.*');
 
 // クラウドは frontend と API が別オリジン → セッション Cookie を cross-domain

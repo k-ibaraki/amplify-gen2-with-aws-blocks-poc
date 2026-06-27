@@ -58,7 +58,7 @@ const auth = new AuthCognito(scope, 'auth', {
 export const authApi = auth.createApi();
 
 // ─── Todo（DistributedTable = DynamoDB）─────────────────────────────────────
-// 認証なしの共有 Todo リスト。全件を固定パーティション 'todo' に入れて query で一覧する。
+// 認証必須の共有 Todo リスト（全 API で requireAuth）。全件を固定パーティション 'todo' に入れて query で一覧する。
 const todoSchema = z.object({
   pk: z.string(),        // 固定パーティションキー（'todo'）
   id: z.string(),        // ソートキー（作成時刻ベースの一意ID）
